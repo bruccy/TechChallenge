@@ -1,44 +1,42 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using TechChallenge.Models;
 
 namespace TechChallenge.Controllers
 {
     [Route("api/[controller]")]
     public class SampleDataController : Controller
     {
-        private static string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
 
         [HttpGet("[action]")]
-        public IEnumerable<WeatherForecast> WeatherForecasts()
+        public IEnumerable<ForecastWeather> WeatherForecasts()
         {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                DateFormatted = DateTime.Now.AddDays(index).ToString("d"),
-                TemperatureC = rng.Next(-20, 55),
-                Summary = Summaries[rng.Next(Summaries.Length)]
-            });
+            return GetAsync(CancellationToken.None).Result;
         }
 
-        public class WeatherForecast
+        public async Task<List<ForecastWeather>> GetAsync(CancellationToken cancellationToken)
         {
-            public string DateFormatted { get; set; }
-            public int TemperatureC { get; set; }
-            public string Summary { get; set; }
+            var client = new HttpClient();
+            client.BaseAddress = new Uri("https://localhost:44300/");
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            public int TemperatureF
+            cancellationToken.ThrowIfCancellationRequested();
+
+            HttpResponseMessage response = await client.GetAsync("api/values", cancellationToken);
+            if (response.IsSuccessStatusCode)
             {
-                get
-                {
-                    return 32 + (int)(TemperatureC / 0.5556);
-                }
+                var stringResult = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<List<ForecastWeather>>(stringResult);
             }
+
+            return new List<ForecastWeather>();
         }
     }
 }
