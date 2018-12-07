@@ -9,18 +9,22 @@ namespace TechChallenge.WebAPICaller.Retry
 {
     public static class RetryHandler
     {
-        public static async Task<TResult> Execute<TResult>(Func<TResult> func, int attempts, int waintingTime)
+        public static async Task<TResult> Execute<TResult>(Func<Task<TResult>> func, int attempts, int waintingTimeInSeconds)
         {
             var circuitBreaker = new CircuitBreakerHandler();
             while(attempts > 0)
             {
                 try
                 {
-                    return circuitBreaker.ExecuteFunction(func);
+                    return await circuitBreaker.ExecuteFunction(func);
+                }
+                catch (CircuitBreakerOperationFailException)
+                {
+                    Thread.Sleep(waintingTimeInSeconds * 1000);
                 }
                 catch (CircuitBreakIsOpenException)
                 {
-                    Thread.Sleep(waintingTime);
+                    throw new RetryAttemptNotAllowedException("Retry attempt not allowed now.");
                 }
 
                 attempts--;

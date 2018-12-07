@@ -2,7 +2,8 @@
 
 <p>This component demonstrates fetching data from the server.</p>
 
-<p *ngIf="!forecasts"><em>Loading...</em></p>
+<p *ngIf="!callError && !forecasts"><em>Loading...</em></p>
+<p *ngIf="callError"><em>Service unavailable. Try again later.</em></p>
 
 <table class='table' *ngIf="forecasts">
   <thead>

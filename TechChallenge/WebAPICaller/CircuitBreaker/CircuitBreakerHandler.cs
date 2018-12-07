@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using TechChallenge.WebAPICaller.CircuitBreaker.CircuitBreakerException;
 
 namespace TechChallenge.WebAPICaller.CircuitBreaker
@@ -38,7 +39,7 @@ namespace TechChallenge.WebAPICaller.CircuitBreaker
             State = CircuitBreakerState.CLOSED;
         }
 
-        public TResult ExecuteFunction<TResult>(Func<TResult> func)
+        public async Task<TResult> ExecuteFunction<TResult>(Func<Task<TResult>> func)
         {
             if (State == CircuitBreakerState.OPEN)
             {
@@ -47,7 +48,7 @@ namespace TechChallenge.WebAPICaller.CircuitBreaker
 
             try
             {
-                var returnedValue = func();
+                var returnedValue = await func();
                 if (State == CircuitBreakerState.HALF_OPEN)
                 {
                     State = CircuitBreakerState.CLOSED;

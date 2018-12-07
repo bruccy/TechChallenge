@@ -24,19 +24,27 @@ namespace TechChallenge.Controllers
             try
             {
                 return TryingGetValues().Result;
-            }catch(RetryLimitException)                
-            {
-                return null;
             }
-            catch(CircuitBreakerOperationFailException)
+            catch (Exception ex)
             {
-                return null;
+                Exception currentException = ex;
+                while (!(currentException is RetryAttemptNotAllowedException) && !(currentException is RetryLimitException) && currentException.InnerException != null)
+                {
+                    currentException = currentException.InnerException;
+                }
+
+                if (currentException is RetryAttemptNotAllowedException || currentException is RetryLimitException)
+                {
+                    throw new Exception("Service unavailable. Try again later.");
+                }
+
+                throw;
             }
         }
 
         private async Task<List<object>> TryingGetValues()
         {
-            return await RetryHandler.Execute(() => GetAsync(), 6, 1).Result;
+            return await RetryHandler.Execute(GetAsync, 6, 1);
         }
 
         public async Task<List<object>> GetAsync()
@@ -59,7 +67,7 @@ namespace TechChallenge.Controllers
                     }).ToList();
             }
 
-            return new List<object>();           
+            throw new Exception("Fail in receive the response.");      
         }
     }
 }
