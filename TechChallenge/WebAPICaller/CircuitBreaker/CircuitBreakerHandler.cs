@@ -61,7 +61,7 @@ namespace TechChallenge.WebAPICaller.CircuitBreaker
 
                 return returnedValue;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 if (State == CircuitBreakerState.HALF_OPEN)
                 {
@@ -80,7 +80,7 @@ namespace TechChallenge.WebAPICaller.CircuitBreaker
                     }
                 }
 
-                throw new CircuitBreakerOperationFailException("Operation failed", ex);
+                throw new CircuitBreakerOperationFailException("Operation failed");
             }
         }
     }

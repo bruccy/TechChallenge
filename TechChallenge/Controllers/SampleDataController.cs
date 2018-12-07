@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using TechChallenge.Models;
+using TechChallenge.WebAPICaller.CircuitBreaker.CircuitBreakerException;
+using TechChallenge.WebAPICaller.Retry;
+using TechChallenge.WebAPICaller.Retry.RetryException;
 
 namespace TechChallenge.Controllers
 {
@@ -16,27 +19,47 @@ namespace TechChallenge.Controllers
     {
 
         [HttpGet("[action]")]
-        public IEnumerable<ForecastWeather> WeatherForecasts()
+        public IEnumerable<object> WeatherForecasts()
         {
-            return GetAsync(CancellationToken.None).Result;
+            try
+            {
+                return TryingGetValues().Result;
+            }catch(RetryLimitException)                
+            {
+                return null;
+            }
+            catch(CircuitBreakerOperationFailException)
+            {
+                return null;
+            }
         }
 
-        public async Task<List<ForecastWeather>> GetAsync(CancellationToken cancellationToken)
+        private async Task<List<object>> TryingGetValues()
         {
+            return await RetryHandler.Execute(() => GetAsync(), 6, 1).Result;
+        }
+
+        public async Task<List<object>> GetAsync()
+        {           
             var client = new HttpClient();
             client.BaseAddress = new Uri("https://localhost:44300/");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            HttpResponseMessage response = await client.GetAsync("api/values", cancellationToken);
+            HttpResponseMessage response = await client.GetAsync("api/values");
             if (response.IsSuccessStatusCode)
             {
                 var stringResult = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<List<ForecastWeather>>(stringResult);
+                return string.IsNullOrEmpty(stringResult) ? new List<object>() : JsonConvert.DeserializeObject<List<ForecastWeather>>(stringResult)
+                    .Select(fw => (object)new
+                    {
+                        dateFormatted = fw.Date,
+                        temperatureC = fw.TempC,
+                        temperatureF = fw.TempF,
+                        summary = fw.Summary
+                    }).ToList();
             }
 
-            return new List<ForecastWeather>();
+            return new List<object>();           
         }
     }
 }

@@ -4,8 +4,6 @@ namespace TechChallenge.Models
 {
     public class ForecastWeather
     {
-        public int Id { get; set; }
-
         public DateTime Date { get; set; }
 
         public int TempC { get; set; }
